@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Physics Lab</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- CONFIGURATION: ADD YOUR APPS HERE ---
+        // filename: needs to match the actual HTML file name in your GitHub repo
+        const APPS = [
+            {
+                id: 'physics',
+                title: 'Physics Mechanics',
+                description: '50 Question diagnostic on Kinematics, Forces, and Momentum.',
+                filename: 'diagnosticTest.html', 
+                icon: 'Atom', 
+                color: 'bg-blue-600',
+                tags: ['HKDSE', 'Physics']
+            },
+            // Inside the APPS array in index.html
+            {
+                id: 'momentum',
+                title: 'Collision Lab',
+                description: 'Visualize conservation of momentum with elastic and inelastic collisions.',
+                filename: 'momentum.html', // Matches the filename you save below
+                icon: 'Calculator', // Or any other icon
+                color: 'bg-indigo-600',
+                tags: ['Physics', 'Simulation']
+            },
+            {
+            id: 'energy',
+            title: 'Conservation of Energy',
+            description: 'Visualize conservation of energy with kinetic and potential energy.',
+            filename: 'energy.html',
+            icon: 'Sigma',
+            color: 'bg-purple-600',
+            tags: ['Physics', 'Simulation']
+            }
+        ];
+
+        // --- ICONS COMPONENT ---
+        const Icon = ({ name, className }) => {
+            // 1. Atom Icon
+            if (name === 'Atom') return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                </svg>
+            );
+        
+            // 2. Calculator Icon
+            if (name === 'Calculator') return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+            );
+        
+            // 3. Flask Icon
+            if (name === 'FlaskConical') return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 2v7.31L6 14h12l-4-4.69V2M8.5 2h7"></path>
+                </svg>
+            );
+        
+            // 4. Sigma Icon (Added for Energy App)
+            if (name === 'Sigma') return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 7V4H6l6 8-6 8h12v-3"></path>
+                </svg>
+            );
+        
+            // Default Fallback Icon (Lightning/Zap)
+            return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            );
+        };
+
+        const AppCard = ({ app }) => {
+            return (
+                <a 
+                    href={app.disabled ? '#' : app.filename}
+                    className={`block bg-white rounded-xl overflow-hidden border border-slate-200 relative group ${app.disabled ? 'opacity-60 cursor-not-allowed' : 'card-hover cursor-pointer'}`}
+                >
+                    <div className={`h-24 ${app.color} flex items-center justify-center`}>
+                        <div className="bg-white/20 p-3 rounded-full text-white">
+                            <Icon name={app.icon} className="w-8 h-8" />
+                        </div>
+                    </div>
+                    <div className="p-6">
+                        <div className="flex gap-2 mb-3">
+                            {app.tags.map(tag => (
+                                <span key={tag} className="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">
+                            {app.title}
+                        </h3>
+                        <p className="text-slate-500 text-sm leading-relaxed">
+                            {app.description}
+                        </p>
+                        
+                        <div className="mt-6 flex items-center text-sm font-bold text-blue-600">
+                            {app.disabled ? (
+                                <span className="text-slate-400">Coming Soon</span>
+                            ) : (
+                                <>
+                                    Launch App 
+                                    <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </a>
+            );
+        };
+
+        const Dashboard = () => {
+            return (
+                <div className="min-h-screen pb-12">
+                    {/* Header */}
+                    <div className="bg-slate-900 text-white pt-12 pb-24 px-6">
+                        <div className="max-w-5xl mx-auto text-center">
+                            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
+                                Virtual Physics Lab
+                            </h1>
+                            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                                Interactive diagnostic tools and virtual lab for Physics students.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Grid */}
+                    <div className="max-w-5xl mx-auto px-6 -mt-16 fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {APPS.map(app => (
+                                <AppCard key={app.id} app={app} />
+                            ))}
+                        </div>
+
+                        {/* Footer Info */}
+                        <div className="mt-12 text-center border-t border-slate-200 pt-8">
+                            <p className="text-slate-400 text-sm">
+                                &copy; {new Date().getFullYear()} HKDSE Study Hub. All apps run locally in your browser.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>

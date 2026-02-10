@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKDSE Physics: Mechanics Diagnostic</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        body { background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-fill { transition: width 1s ease-out; }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICONS ---
+        const IconCheck = () => <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>;
+        const IconArrowRight = () => <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>;
+        const IconChart = () => <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>;
+        const IconHome = () => <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>;
+
+        // --- 50 HKDSE QUESTIONS (UPDATED DATASET) ---
+        const QUESTIONS = [
+            // --- KINEMATICS (Linear Motion) ---
+            {
+                id: 1,
+                concept: "Linear Motion",
+                text: "A runner completes one lap around a circular track of radius R. What are the displacement and distance traveled?",
+                options: [
+                    { id: 'A', text: "Displacement: 2πR, Distance: 2πR" },
+                    { id: 'B', text: "Displacement: 0, Distance: 2πR" },
+                    { id: 'C', text: "Displacement: 0, Distance: 0" },
+                    { id: 'D', text: "Displacement: 2R, Distance: 2πR" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Displacement is a vector quantity referring to the change in position. Since the runner ends where they started, displacement is 0. Distance is the scalar total path length (circumference)."
+            },
+            {
+                id: 2,
+                concept: "Linear Motion",
+                text: "An object is thrown vertically upwards. At the highest point of its trajectory:",
+                options: [
+                    { id: 'A', text: "Velocity is zero, acceleration is zero." },
+                    { id: 'B', text: "Velocity is maximum, acceleration is zero." },
+                    { id: 'C', text: "Velocity is zero, acceleration is approximately 9.81 m/s² downwards." },
+                    { id: 'D', text: "Velocity is zero, acceleration is 9.81 m/s² upwards." }
+                ],
+                correctAnswer: 'C',
+                explanation: "At the peak, the object momentarily stops (v=0), but gravity is still acting on it. Acceleration due to gravity (g) is constant throughout the flight."
+            },
+            {
+                id: 3,
+                concept: "Linear Motion",
+                text: "Which of the following v-t graphs represents an object thrown upwards and returning to the thrower's hand (taking up as positive)?",
+                options: [
+                    { id: 'A', text: "A V-shape starting positive, hitting zero, going positive again." },
+                    { id: 'B', text: "A straight line with negative slope, starting positive, crossing zero to negative." },
+                    { id: 'C', text: "A parabolic curve." },
+                    { id: 'D', text: "A horizontal line." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Gravity provides a constant negative acceleration. On a v-t graph, constant acceleration is a straight line. The slope is negative (-g)."
+            },
+            {
+                id: 4,
+                concept: "Linear Motion",
+                text: "If the s-t (displacement-time) graph is a curve with increasing slope (concave up), the object is:",
+                options: [
+                    { id: 'A', text: "Moving with constant velocity." },
+                    { id: 'B', text: "Decelerating." },
+                    { id: 'C', text: "Accelerating." },
+                    { id: 'D', text: "Stationary." }
+                ],
+                correctAnswer: 'C',
+                explanation: "The slope of an s-t graph is velocity. If the slope is increasing (getting steeper), the velocity is increasing, which means acceleration."
+            },
+            {
+                id: 5,
+                concept: "Linear Motion",
+                text: "A car travels from A to B at 40 km/h and returns from B to A at 60 km/h. What is the average speed?",
+                options: [
+                    { id: 'A', text: "50 km/h" },
+                    { id: 'B', text: "48 km/h" },
+                    { id: 'C', text: "0 km/h" },
+                    { id: 'D', text: "55 km/h" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Average speed = Total Distance / Total Time. Let distance be d. Time1 = d/40, Time2 = d/60. Total time = d(1/40 + 1/60). Avg Speed = 2d / [d(5/120)] = 48 km/h."
+            },
+            {
+                id: 6,
+                concept: "Linear Motion",
+                text: "Two objects of different mass are dropped from the same height in a vacuum. Which hits the ground first?",
+                options: [
+                    { id: 'A', text: "The heavier object." },
+                    { id: 'B', text: "The lighter object." },
+                    { id: 'C', text: "They hit at the same time." },
+                    { id: 'D', text: "Depends on their density." }
+                ],
+                correctAnswer: 'C',
+                explanation: "In a vacuum (no air resistance), acceleration due to gravity (g) is independent of mass. s = ut + 1/2at². Both have same s, u, and a, so t is the same."
+            },
+            {
+                id: 7,
+                concept: "Linear Motion",
+                text: "The area under a velocity-time graph represents:",
+                options: [
+                    { id: 'A', text: "Acceleration." },
+                    { id: 'B', text: "Instantaneous speed." },
+                    { id: 'C', text: "Displacement." },
+                    { id: 'D', text: "Force." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Integration of velocity with respect to time gives displacement (change in position)."
+            },
+            {
+                id: 8,
+                concept: "Linear Motion",
+                text: "An object moving with constant speed in a circle:",
+                options: [
+                    { id: 'A', text: "Has zero acceleration." },
+                    { id: 'B', text: "Has constant velocity." },
+                    { id: 'C', text: "Has an acceleration directed towards the center." },
+                    { id: 'D', text: "Has an acceleration directed outwards." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Velocity is a vector. Even if speed is constant, direction changes, meaning velocity changes. This requires a centripetal acceleration towards the center."
+            },
+
+            // --- FORCE & NEWTON'S LAWS ---
+            {
+                id: 9,
+                concept: "Force",
+                text: "A large truck collides head-on with a small car. Which exerts a larger force on the other?",
+                options: [
+                    { id: 'A', text: "The truck exerts a larger force." },
+                    { id: 'B', text: "The car exerts a larger force." },
+                    { id: 'C', text: "They exert the same magnitude of force." },
+                    { id: 'D', text: "Depends on their speeds." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Newton's 3rd Law: Action and reaction are equal in magnitude and opposite in direction. The forces are identical, though the car suffers more damage due to lower mass (higher acceleration)."
+            },
+            {
+                id: 10,
+                concept: "Force",
+                text: "An elevator is moving UPWARDS at a CONSTANT velocity. The tension in the cable (T) compared to the weight of the elevator (W) is:",
+                options: [
+                    { id: 'A', text: "T > W" },
+                    { id: 'B', text: "T = W" },
+                    { id: 'C', text: "T < W" },
+                    { id: 'D', text: "T = 0" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Constant velocity means zero acceleration. By Newton's 1st/2nd Law (F=ma), if a=0, the net force is 0. Therefore, Upward Force (T) must equal Downward Force (W)."
+            },
+            {
+                id: 11,
+                concept: "Force",
+                text: "A book rests on a table. The Newton's 3rd Law 'reaction pair' to the gravitational force of the Earth pulling on the book is:",
+                options: [
+                    { id: 'A', text: "The normal force of the table pushing up on the book." },
+                    { id: 'B', text: "The book pushing down on the table." },
+                    { id: 'C', text: "The gravitational force of the book pulling on the Earth." },
+                    { id: 'D', text: "Friction acting on the book." }
+                ],
+                correctAnswer: 'C',
+                explanation: "N3L pairs must involve the same two objects (Earth and Book) and the same type of force (Gravity). Earth pulls Book; Book pulls Earth."
+            },
+            {
+                id: 12,
+                concept: "Force",
+                text: "If the resultant force acting on a moving object suddenly becomes zero, the object will:",
+                options: [
+                    { id: 'A', text: "Stop immediately." },
+                    { id: 'B', text: "Slow down and stop." },
+                    { id: 'C', text: "Continue moving at constant velocity." },
+                    { id: 'D', text: "Change direction." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Newton's 1st Law (Inertia). An object in motion stays in motion with constant velocity unless acted upon by a net external force."
+            },
+            {
+                id: 13,
+                concept: "Force",
+                text: "A block is pushed across a rough horizontal surface at constant velocity. The friction force is:",
+                options: [
+                    { id: 'A', text: "Greater than the pushing force." },
+                    { id: 'B', text: "Less than the pushing force." },
+                    { id: 'C', text: "Equal to the pushing force." },
+                    { id: 'D', text: "Zero." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Constant velocity implies equilibrium (a=0). The forward pushing force must exactly balance the backward kinetic friction force."
+            },
+            {
+                id: 14,
+                concept: "Force",
+                text: "Which of the following is NOT a vector quantity?",
+                options: [
+                    { id: 'A', text: "Displacement" },
+                    { id: 'B', text: "Force" },
+                    { id: 'C', text: "Momentum" },
+                    { id: 'D', text: "Mass" }
+                ],
+                correctAnswer: 'D',
+                explanation: "Mass is a scalar quantity (magnitude only). The others have both magnitude and direction."
+            },
+            {
+                id: 15,
+                concept: "Force",
+                text: "A skydiver falls and reaches terminal velocity. At this point:",
+                options: [
+                    { id: 'A', text: "Air resistance is zero." },
+                    { id: 'B', text: "Gravity is zero." },
+                    { id: 'C', text: "Air resistance equals weight." },
+                    { id: 'D', text: "Air resistance is greater than weight." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Terminal velocity is a constant velocity. This happens when the upward drag (air resistance) increases enough to exactly balance the downward weight."
+            },
+            {
+                id: 16,
+                concept: "Force",
+                text: "An object is on a smooth slope inclined at θ. The component of weight acting down the slope is:",
+                options: [
+                    { id: 'A', text: "mg sin θ" },
+                    { id: 'B', text: "mg cos θ" },
+                    { id: 'C', text: "mg tan θ" },
+                    { id: 'D', text: "mg" }
+                ],
+                correctAnswer: 'A',
+                explanation: "Weight (mg) acts vertically down. Resolving it parallel to the slope gives mg sin θ. The perpendicular component is mg cos θ."
+            },
+            {
+                id: 17,
+                concept: "Force",
+                text: "Inertia is best defined as:",
+                options: [
+                    { id: 'A', text: "The force that keeps objects moving." },
+                    { id: 'B', text: "The tendency of an object to resist changes in its state of motion." },
+                    { id: 'C', text: "The speed of an object." },
+                    { id: 'D', text: "The weight of an object." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Inertia is the property of matter that resists acceleration. It is directly related to mass."
+            },
+
+            // --- MOMENT OF FORCE ---
+            {
+                id: 18,
+                concept: "Moment of Force",
+                text: "The moment of a force is defined as:",
+                options: [
+                    { id: 'A', text: "Force × Distance traveled" },
+                    { id: 'B', text: "Force × Perpendicular distance from pivot" },
+                    { id: 'C', text: "Mass × Acceleration" },
+                    { id: 'D', text: "Force / Area" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Moment (Torque) = F × d, where d is the perpendicular distance from the line of action of the force to the pivot."
+            },
+            {
+                id: 19,
+                concept: "Moment of Force",
+                text: "To open a heavy door most easily, you should push:",
+                options: [
+                    { id: 'A', text: "Close to the hinges." },
+                    { id: 'B', text: "In the middle of the door." },
+                    { id: 'C', text: "Far from the hinges (at the handle)." },
+                    { id: 'D', text: "It doesn't matter." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Moment = F × d. To maximize the turning effect (Moment) with the same Force, you need to maximize the distance (d) from the pivot (hinges)."
+            },
+            {
+                id: 20,
+                concept: "Moment of Force",
+                text: "For a rigid body to be in equilibrium, which condition(s) must be met?",
+                options: [
+                    { id: 'A', text: "Resultant force is zero only." },
+                    { id: 'B', text: "Resultant moment is zero only." },
+                    { id: 'C', text: "Both resultant force and resultant moment are zero." },
+                    { id: 'D', text: "It must be stationary." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Equilibrium requires no translational acceleration (Net Force = 0) AND no rotational acceleration (Net Moment = 0)."
+            },
+            {
+                id: 21,
+                concept: "Moment of Force",
+                text: "Two equal and opposite parallel forces that do not act along the same line form a:",
+                options: [
+                    { id: 'A', text: "Equilibrium." },
+                    { id: 'B', text: "Couple." },
+                    { id: 'C', text: "Newton pair." },
+                    { id: 'D', text: "Zero moment." }
+                ],
+                correctAnswer: 'B',
+                explanation: "A couple produces pure rotation (a moment) but no translation (net force is zero)."
+            },
+            {
+                id: 22,
+                concept: "Moment of Force",
+                text: "A uniform meter rule is balanced at the 50cm mark. If a mass is placed at the 10cm mark, where must an equal mass be placed to restore balance?",
+                options: [
+                    { id: 'A', text: "90 cm mark" },
+                    { id: 'B', text: "60 cm mark" },
+                    { id: 'C', text: "100 cm mark" },
+                    { id: 'D', text: "40 cm mark" }
+                ],
+                correctAnswer: 'A',
+                explanation: "The pivot is at 50. The mass at 10 is 40cm from pivot (left). To balance, the other mass must be 40cm from pivot (right). 50 + 40 = 90cm."
+            },
+            {
+                id: 23,
+                concept: "Moment of Force",
+                text: "The SI unit for the Moment of a Force is:",
+                options: [
+                    { id: 'A', text: "Joule (J)" },
+                    { id: 'B', text: "Newton (N)" },
+                    { id: 'C', text: "Newton meter (Nm)" },
+                    { id: 'D', text: "Watt (W)" }
+                ],
+                correctAnswer: 'C',
+                explanation: "Force (N) × Distance (m) = Nm. While dimensionally similar to Joules, we use Nm for torque to distinguish it from Energy."
+            },
+            {
+                id: 24,
+                concept: "Moment of Force",
+                text: "An object is most stable when:",
+                options: [
+                    { id: 'A', text: "Its center of gravity is high and base is narrow." },
+                    { id: 'B', text: "Its center of gravity is low and base is wide." },
+                    { id: 'C', text: "Its center of gravity is high and base is wide." },
+                    { id: 'D', text: "Its center of gravity is low and base is narrow." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Stability is improved by lowering the Center of Gravity (lowering potential energy) and widening the base (requiring a larger tilt to topple)."
+            },
+            {
+                id: 25,
+                concept: "Moment of Force",
+                text: "A ladder leans against a smooth wall. The friction acting on the foot of the ladder acts:",
+                options: [
+                    { id: 'A', text: "Towards the wall." },
+                    { id: 'B', text: "Away from the wall." },
+                    { id: 'C', text: "Upwards." },
+                    { id: 'D', text: "Downwards." }
+                ],
+                correctAnswer: 'A',
+                explanation: "The ladder has a tendency to slip *away* from the wall at the bottom. Friction opposes motion, so it acts *towards* the wall."
+            },
+
+            // --- WORK, ENERGY & POWER ---
+            {
+                id: 26,
+                concept: "Work & Energy",
+                text: "A waiter carries a tray horizontally across a room at constant speed. The work done by the waiter on the tray is:",
+                options: [
+                    { id: 'A', text: "Positive." },
+                    { id: 'B', text: "Negative." },
+                    { id: 'C', text: "Zero." },
+                    { id: 'D', text: "Depends on the weight." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Work = F × s × cos(θ). The force (lift) is vertical. The displacement is horizontal. The angle is 90°. cos(90) = 0, so Work = 0."
+            },
+            {
+                id: 27,
+                concept: "Work & Energy",
+                text: "Kinetic Energy (KE) and Momentum (p) are related by the equation:",
+                options: [
+                    { id: 'A', text: "KE = p / m" },
+                    { id: 'B', text: "KE = p² / 2m" },
+                    { id: 'C', text: "KE = mp" },
+                    { id: 'D', text: "KE = p²m" }
+                ],
+                correctAnswer: 'B',
+                explanation: "KE = 1/2 mv². Multiply top and bottom by m: KE = (m²v²) / 2m. Since p = mv, KE = p² / 2m."
+            },
+            {
+                id: 28,
+                concept: "Work & Energy",
+                text: "A ball is dropped. Ignoring air resistance, as it falls:",
+                options: [
+                    { id: 'A', text: "PE increases, KE decreases." },
+                    { id: 'B', text: "PE decreases, KE increases." },
+                    { id: 'C', text: "Both PE and KE increase." },
+                    { id: 'D', text: "Total mechanical energy decreases." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Conservation of Energy: Gravitational Potential Energy (mgh) is converted into Kinetic Energy (1/2 mv²) as height decreases and speed increases."
+            },
+            {
+                id: 29,
+                concept: "Work & Energy",
+                text: "Power is defined as:",
+                options: [
+                    { id: 'A', text: "Rate of doing work." },
+                    { id: 'B', text: "Total work done." },
+                    { id: 'C', text: "Force × Velocity²." },
+                    { id: 'D', text: "Change in momentum." }
+                ],
+                correctAnswer: 'A',
+                explanation: "Power = Work Done / Time. It is the rate of energy transfer."
+            },
+            {
+                id: 30,
+                concept: "Work & Energy",
+                text: "When a car brakes to a stop, its kinetic energy is primarily converted into:",
+                options: [
+                    { id: 'A', text: "Potential energy." },
+                    { id: 'B', text: "Elastic energy." },
+                    { id: 'C', text: "Internal energy (Heat) in the brakes." },
+                    { id: 'D', text: "Sound energy only." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Friction does negative work, dissipating mechanical energy into internal energy (heat) via the brake pads and discs."
+            },
+            {
+                id: 31,
+                concept: "Work & Energy",
+                text: "A crane lifts a load of weight W to height h in time t. The average power output is:",
+                options: [
+                    { id: 'A', text: "Wh" },
+                    { id: 'B', text: "Wh / t" },
+                    { id: 'C', text: "Wt / h" },
+                    { id: 'D', text: "W / t" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Work Done = Force × Distance = W × h. Power = Work / Time = Wh / t."
+            },
+            {
+                id: 32,
+                concept: "Work & Energy",
+                text: "The Work-Energy Theorem states that the net work done on an object equals:",
+                options: [
+                    { id: 'A', text: "Its change in potential energy." },
+                    { id: 'B', text: "Its change in kinetic energy." },
+                    { id: 'C', text: "Its final momentum." },
+                    { id: 'D', text: "Zero." }
+                ],
+                correctAnswer: 'B',
+                explanation: "W_net = ΔKE. If you do net work on an object, you change its speed (and thus KE)."
+            },
+            {
+                id: 33,
+                concept: "Work & Energy",
+                text: "Two engines have different power ratings. The one with higher power:",
+                options: [
+                    { id: 'A', text: "Always does more work." },
+                    { id: 'B', text: "Always applies more force." },
+                    { id: 'C', text: "Does the same work in less time." },
+                    { id: 'D', text: "Consumes less fuel." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Higher power means a faster rate of energy transfer. It can do the same amount of work faster than a lower power engine."
+            },
+            {
+                id: 34,
+                concept: "Work & Energy",
+                text: "1 kWh (kilowatt-hour) is a unit of:",
+                options: [
+                    { id: 'A', text: "Power." },
+                    { id: 'B', text: "Force." },
+                    { id: 'C', text: "Energy." },
+                    { id: 'D', text: "Time." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Power × Time = Energy. 1 kWh is the energy used by a 1kW device running for 1 hour (3.6 million Joules)."
+            },
+
+            // --- MOMENTUM ---
+            {
+                id: 35,
+                concept: "Momentum",
+                text: "Momentum is calculated as:",
+                options: [
+                    { id: 'A', text: "Mass × Acceleration" },
+                    { id: 'B', text: "Mass × Velocity" },
+                    { id: 'C', text: "Force × Time" },
+                    { id: 'D', text: "1/2 Mass × Velocity²" }
+                ],
+                correctAnswer: 'B',
+                explanation: "p = mv. It is a vector quantity."
+            },
+            {
+                id: 36,
+                concept: "Momentum",
+                text: "The Principle of Conservation of Momentum applies:",
+                options: [
+                    { id: 'A', text: "Only in elastic collisions." },
+                    { id: 'B', text: "Only in inelastic collisions." },
+                    { id: 'C', text: "In all collisions where no external forces act." },
+                    { id: 'D', text: "Only when kinetic energy is conserved." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Momentum is ALWAYS conserved in a closed system (no net external force), regardless of whether the collision is elastic or inelastic."
+            },
+            {
+                id: 37,
+                concept: "Momentum",
+                text: "In a perfectly ELASTIC collision:",
+                options: [
+                    { id: 'A', text: "Only momentum is conserved." },
+                    { id: 'B', text: "Only kinetic energy is conserved." },
+                    { id: 'C', text: "Both momentum and kinetic energy are conserved." },
+                    { id: 'D', text: "Objects stick together." }
+                ],
+                correctAnswer: 'C',
+                explanation: "This is the definition of an elastic collision. Kinetic energy is not lost to heat/sound/deformation."
+            },
+            {
+                id: 38,
+                concept: "Momentum",
+                text: "Impulse is defined as:",
+                options: [
+                    { id: 'A', text: "Change in Kinetic Energy." },
+                    { id: 'B', text: "Force × Distance." },
+                    { id: 'C', text: "Change in Momentum (Force × Time)." },
+                    { id: 'D', text: "Rate of change of momentum." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Impulse J = FΔt = Δp (Change in momentum)."
+            },
+            {
+                id: 39,
+                concept: "Momentum",
+                text: "Airbags in cars reduce injury by:",
+                options: [
+                    { id: 'A', text: "Reducing the change in momentum." },
+                    { id: 'B', text: "Increasing the time of impact, thereby reducing the force." },
+                    { id: 'C', text: "Increasing the force of impact." },
+                    { id: 'D', text: "Reducing the impulse." }
+                ],
+                correctAnswer: 'B',
+                explanation: "The change in momentum (Impulse) is fixed by the crash speed. By increasing the time (Δt) over which the stop occurs, the average force (F = Δp/Δt) is reduced."
+            },
+            {
+                id: 40,
+                concept: "Momentum",
+                text: "A cannon fires a cannonball. The cannon recoils backwards because:",
+                options: [
+                    { id: 'A', text: "Energy is conserved." },
+                    { id: 'B', text: "Momentum of the system must remain zero." },
+                    { id: 'C', text: "The cannon is lighter than the ball." },
+                    { id: 'D', text: "Gravity pulls it back." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Before firing, total momentum is 0. After firing, the forward momentum of the ball must be cancelled by the backward momentum of the cannon to keep the total at 0."
+            },
+            {
+                id: 41,
+                concept: "Momentum",
+                text: "A 2kg object moving at 3 m/s collides with a stationary 1kg object and they stick together. The final velocity is:",
+                options: [
+                    { id: 'A', text: "1 m/s" },
+                    { id: 'B', text: "2 m/s" },
+                    { id: 'C', text: "3 m/s" },
+                    { id: 'D', text: "0 m/s" }
+                ],
+                correctAnswer: 'B',
+                explanation: "Conservation of Momentum: (2kg)(3m/s) + (1kg)(0) = (2+1kg)(v). 6 = 3v -> v = 2 m/s."
+            },
+            {
+                id: 42,
+                concept: "Momentum",
+                text: "The area under a Force-Time graph represents:",
+                options: [
+                    { id: 'A', text: "Work Done." },
+                    { id: 'B', text: "Impulse (Change in momentum)." },
+                    { id: 'C', text: "Power." },
+                    { id: 'D', text: "Acceleration." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Integral of F dt is Impulse."
+            },
+
+            // --- MIXED / ADVANCED CONCEPTS ---
+            {
+                id: 43,
+                concept: "Linear Motion",
+                text: "In projectile motion (ignoring air resistance), the horizontal component of velocity:",
+                options: [
+                    { id: 'A', text: "Increases." },
+                    { id: 'B', text: "Decreases." },
+                    { id: 'C', text: "Remains constant." },
+                    { id: 'D', text: "Is zero." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Gravity acts only vertically. There is no horizontal force, so horizontal acceleration is zero, and horizontal velocity is constant."
+            },
+            {
+                id: 44,
+                concept: "Force",
+                text: "A block slides down a rough inclined plane at constant speed. The forces acting on it are:",
+                options: [
+                    { id: 'A', text: "Gravity and Normal force only." },
+                    { id: 'B', text: "Gravity, Normal force, and Friction." },
+                    { id: 'C', text: "Gravity and Friction only." },
+                    { id: 'D', text: "Gravity, Normal force, and a pushing force." }
+                ],
+                correctAnswer: 'B',
+                explanation: "Gravity pulls down, Normal force pushes perpendicular to surface, and Friction acts up the slope to balance the component of gravity (since speed is constant)."
+            },
+            {
+                id: 45,
+                concept: "Work & Energy",
+                text: "Which requires more work: lifting a 10kg box 2m vertically, or sliding it 2m up a frictionless slope to the same height?",
+                options: [
+                    { id: 'A', text: "Lifting vertically." },
+                    { id: 'B', text: "Sliding up the slope." },
+                    { id: 'C', text: "They require the same work." },
+                    { id: 'D', text: "Depends on the angle." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Work done against gravity depends only on the change in vertical height (mgh). The path does not matter if friction is absent."
+            },
+            {
+                id: 46,
+                concept: "Momentum",
+                text: "A rubber ball bounces off a wall. The change in momentum vector is:",
+                options: [
+                    { id: 'A', text: "Zero." },
+                    { id: 'B', text: "Directed into the wall." },
+                    { id: 'C', text: "Directed away from the wall." },
+                    { id: 'D', text: "Parallel to the wall." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Initial p is towards wall. Final p is away. Δp = p_final - p_initial. (Positive) - (Negative) = Large Positive (Away from wall)."
+            },
+            {
+                id: 47,
+                concept: "Moment of Force",
+                text: "A uniform rod is hinged at one end. To hold it horizontal, a force F is applied at the other end. F is smallest when applied:",
+                options: [
+                    { id: 'A', text: "Vertically upwards." },
+                    { id: 'B', text: "Horizontally." },
+                    { id: 'C', text: "At 45 degrees." },
+                    { id: 'D', text: "At 30 degrees." }
+                ],
+                correctAnswer: 'A',
+                explanation: "Moment = F × d × sin(θ). To minimize F, we need to maximize the perpendicular distance/angle effect. 90 degrees (vertical) provides the maximum moment arm."
+            },
+            {
+                id: 48,
+                concept: "Linear Motion",
+                text: "A ticker-tape timer vibrates at 50 Hz. The time interval between two dots is:",
+                options: [
+                    { id: 'A', text: "0.02 s" },
+                    { id: 'B', text: "0.2 s" },
+                    { id: 'C', text: "0.5 s" },
+                    { id: 'D', text: "50 s" }
+                ],
+                correctAnswer: 'A',
+                explanation: "T = 1/f = 1/50 = 0.02 seconds."
+            },
+            {
+                id: 49,
+                concept: "Force",
+                text: "The weight of an astronaut on the Moon is less than on Earth because:",
+                options: [
+                    { id: 'A', text: "The astronaut has less mass on the Moon." },
+                    { id: 'B', text: "There is no atmosphere on the Moon." },
+                    { id: 'C', text: "The Moon's gravitational field strength is weaker." },
+                    { id: 'D', text: "The astronaut is in free fall." }
+                ],
+                correctAnswer: 'C',
+                explanation: "Mass is constant everywhere. Weight = mg. Since g on the Moon is ~1/6th of Earth's, the weight is less."
+            },
+            {
+                id: 50,
+                concept: "Work & Energy",
+                text: "Efficiency of a machine is defined as:",
+                options: [
+                    { id: 'A', text: "Work Output / Work Input × 100%" },
+                    { id: 'B', text: "Work Input / Work Output × 100%" },
+                    { id: 'C', text: "Power Input / Power Output × 100%" },
+                    { id: 'D', text: "Energy Lost / Energy Input × 100%" }
+                ],
+                correctAnswer: 'A',
+                explanation: "Efficiency measures how much of the input energy is usefully transferred. It is always less than 100%."
+            }
+        ];
+
+        // --- COMPONENTS ---
+
+        // 1. Simple Progress Bar Component (The "Graphic")
+        const SkillBar = ({ label, value, colorClass }) => (
+            <div className="mb-4">
+                <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-slate-700">{label}</span>
+                    <span className="text-sm font-medium text-slate-500">{value}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2.5">
+                    <div 
+                        className={`h-2.5 rounded-full ${colorClass} progress-fill`} 
+                        style={{ width: `${value}%` }}
+                    ></div>
+                </div>
+            </div>
+        );
+
+        // 2. The Result Card
+        const DiagnosticCard = ({ title, stats, isComprehensive }) => {
+            const score = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+            let color = "bg-red-500";
+            if (score >= 80) color = "bg-green-500";
+            else if (score >= 50) color = "bg-yellow-500";
+
+            return (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-4 fade-in">
+                    <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center">
+                        {isComprehensive ? <IconChart /> : null}
+                        {title}
+                    </h3>
+                    
+                    {isComprehensive ? (
+                        <div className="space-y-2">
+                            {Object.entries(stats.topics).map(([topic, data]) => {
+                                const topicScore = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                                let topicColor = "bg-red-500";
+                                if (topicScore >= 75) topicColor = "bg-green-500";
+                                else if (topicScore >= 40) topicColor = "bg-yellow-500";
+                                
+                                return (
+                                    <SkillBar 
+                                        key={topic} 
+                                        label={topic} 
+                                        value={topicScore} 
+                                        colorClass={topicColor} 
+                                    />
+                                );
+                            })}
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                                <div className="text-center">
+                                    <span className="text-sm text-slate-500">Overall Accuracy</span>
+                                    <div className="text-3xl font-bold text-slate-800">{score}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center">
+                            <div className="inline-block p-4 rounded-full bg-slate-50 mb-4 border border-slate-100">
+                                <span className={`text-4xl font-bold ${score >= 50 ? 'text-green-600' : 'text-red-500'}`}>
+                                    {score}%
+                                </span>
+                            </div>
+                            <p className="text-slate-500 mb-4">You answered {stats.correct} out of {stats.total} correctly.</p>
+                            <SkillBar label="Proficiency" value={score} colorClass={color} />
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 3. Quiz Component
+        const Quiz = ({ chapter, onComplete, onBack }) => {
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [answers, setAnswers] = useState({});
+            const [showExplanation, setShowExplanation] = useState(false);
+            const [selectedOption, setSelectedOption] = useState(null);
+
+            const questions = useMemo(() => {
+                if (chapter === 'ALL') return QUESTIONS;
+                return QUESTIONS.filter(q => q.concept === chapter);
+            }, [chapter]);
+
+            const currentQ = questions[currentQIndex];
+            const isLast = currentQIndex === questions.length - 1;
+
+            const handleCheck = () => {
+                const isCorrect = selectedOption === currentQ.correctAnswer;
+                if (isCorrect) setScore(s => s + 1);
+                
+                setAnswers(prev => ({
+                    ...prev,
+                    [currentQ.id]: { correct: isCorrect, concept: currentQ.concept }
+                }));
+                setShowExplanation(true);
+            };
+
+            const handleNext = () => {
+                if (isLast) {
+                    onComplete(answers);
+                } else {
+                    setCurrentQIndex(prev => prev + 1);
+                    setSelectedOption(null);
+                    setShowExplanation(false);
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto p-4 fade-in">
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={onBack} className="text-slate-500 flex items-center text-sm font-bold hover:text-slate-800">
+                            <IconHome /> Exit
+                        </button>
+                        <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
+                            {chapter === 'ALL' ? 'Comprehensive' : chapter}
+                        </span>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+                        <div className="w-full bg-slate-100 h-2">
+                            <div className="bg-indigo-600 h-2 transition-all duration-300" 
+                                 style={{ width: `${((currentQIndex + 1) / questions.length) * 100}%` }}></div>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="flex justify-between items-end mb-4">
+                                <span className="text-sm text-slate-400">Question {currentQIndex + 1} of {questions.length}</span>
+                            </div>
+
+                            <h2 className="text-xl font-bold text-slate-800 mb-6">{currentQ.text}</h2>
+
+                            <div className="space-y-3">
+                                {currentQ.options.map(opt => {
+                                    let btnClass = "border-slate-200 hover:bg-slate-50";
+                                    if (showExplanation) {
+                                        if (opt.id === currentQ.correctAnswer) btnClass = "bg-green-100 border-green-500 text-green-900";
+                                        else if (opt.id === selectedOption) btnClass = "bg-red-100 border-red-500 text-red-900";
+                                        else btnClass = "opacity-50";
+                                    } else if (selectedOption === opt.id) {
+                                        btnClass = "bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500";
+                                    }
+
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            disabled={showExplanation}
+                                            onClick={() => setSelectedOption(opt.id)}
+                                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${btnClass}`}
+                                        >
+                                            <span className="font-bold mr-2">{opt.id}.</span> {opt.text}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {showExplanation && (
+                                <div className="mt-6 p-4 bg-blue-50 text-blue-900 rounded-lg text-sm border border-blue-100 fade-in">
+                                    <span className="font-bold block mb-1">Explanation:</span>
+                                    {currentQ.explanation}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="p-4 bg-slate-50 border-t border-slate-100">
+                            {!showExplanation ? (
+                                <button 
+                                    onClick={handleCheck}
+                                    disabled={!selectedOption}
+                                    className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Check Answer
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={handleNext}
+                                    className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 flex justify-center items-center"
+                                >
+                                    {isLast ? "View Diagnostics" : "Next Question"} <IconArrowRight />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. Main App Component
+        const App = () => {
+            const [view, setView] = useState('MENU');
+            const [activeChapter, setActiveChapter] = useState(null);
+            
+            // Using a new storage key for the mechanics-focused dataset
+            const STORAGE_KEY = 'hkdse_physics_mechanics_50';
+
+            const [history, setHistory] = useState(() => {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    return saved ? JSON.parse(saved) : {};
+                } catch(e) { return {}; }
+            });
+
+            useEffect(() => {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+                } catch(e) {}
+            }, [history]);
+
+            const getComprehensiveStats = () => {
+                const topics = {};
+                let total = 0;
+                let correct = 0;
+
+                QUESTIONS.forEach(q => {
+                    if(!topics[q.concept]) topics[q.concept] = { total: 0, correct: 0 };
+                });
+
+                Object.entries(history).forEach(([qId, data]) => {
+                    if (topics[data.concept]) {
+                        topics[data.concept].total++;
+                        total++;
+                        if (data.correct) {
+                            topics[data.concept].correct++;
+                            correct++;
+                        }
+                    }
+                });
+
+                return { total, correct, topics };
+            };
+
+            const handleChapterSelect = (chapter) => {
+                setActiveChapter(chapter);
+                setView('QUIZ');
+            };
+
+            const handleQuizComplete = (sessionAnswers) => {
+                setHistory(prev => ({ ...prev, ...sessionAnswers }));
+                if (activeChapter === 'ALL') {
+                    setView('SUMMARY');
+                } else {
+                    setView('RESULT');
+                }
+            };
+
+            if (view === 'QUIZ') {
+                return <Quiz chapter={activeChapter} onComplete={handleQuizComplete} onBack={() => setView('MENU')} />;
+            }
+
+            if (view === 'RESULT') {
+                const chapterStats = { total: 0, correct: 0 };
+                QUESTIONS.filter(q => q.concept === activeChapter).forEach(q => {
+                    if (history[q.id]) {
+                        chapterStats.total++;
+                        if (history[q.id].correct) chapterStats.correct++;
+                    }
+                });
+
+                return (
+                    <div className="max-w-md mx-auto p-6 fade-in pt-12">
+                        <h2 className="text-2xl font-bold text-center mb-6 text-slate-800">Chapter Complete!</h2>
+                        <DiagnosticCard title={activeChapter} stats={chapterStats} isComprehensive={false} />
+                        <button 
+                            onClick={() => setView('MENU')}
+                            className="w-full py-3 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700"
+                        >
+                            Back to Menu
+                        </button>
+                    </div>
+                );
+            }
+
+            if (view === 'SUMMARY') {
+                const stats = getComprehensiveStats();
+                return (
+                    <div className="max-w-xl mx-auto p-6 fade-in">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800">Comprehensive Report</h2>
+                            <button onClick={() => setView('MENU')} className="text-slate-500 hover:text-slate-800 font-bold">Close</button>
+                        </div>
+                        <DiagnosticCard title="Topic Breakdown" stats={stats} isComprehensive={true} />
+                        <button 
+                            onClick={() => setView('MENU')}
+                            className="w-full mt-4 py-3 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700"
+                        >
+                            Back to Menu
+                        </button>
+                    </div>
+                );
+            }
+
+            const uniqueChapters = [...new Set(QUESTIONS.map(q => q.concept))];
+            const globalStats = getComprehensiveStats();
+
+            return (
+                <div className="max-w-4xl mx-auto p-6 fade-in">
+                    <header className="text-center mb-10 mt-6">
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">HKDSE Physics</h1>
+                        <p className="text-slate-500 mt-2">Mechanics & Motion Diagnostic</p>
+                    </header>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer"
+                             onClick={() => handleChapterSelect('ALL')}>
+                            <div className="relative z-10 flex justify-between items-start">
+                                <div>
+                                    <h3 className="text-2xl font-bold">Comprehensive Test</h3>
+                                    <p className="text-indigo-100 mt-1">Test all 50 Mechanics questions</p>
+                                </div>
+                                <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                                    <IconChart />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex items-end justify-between">
+                                <span className="text-indigo-100 text-sm">50 Questions</span>
+                                <button className="bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-50 transition">Start</button>
+                            </div>
+                        </div>
+                        
+                        {globalStats.total > 0 && (
+                            <div className="md:col-span-2 bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50"
+                                 onClick={() => setView('SUMMARY')}>
+                                <div className="flex items-center">
+                                    <div className="bg-green-100 p-3 rounded-full text-green-600 mr-4">
+                                        <IconChart />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800">View Diagnostic Report</h3>
+                                        <p className="text-xs text-slate-500">{globalStats.total} Questions Answered</p>
+                                    </div>
+                                </div>
+                                <IconArrowRight />
+                            </div>
+                        )}
+
+                        {uniqueChapters.map(chap => (
+                            <div 
+                                key={chap}
+                                onClick={() => handleChapterSelect(chap)}
+                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                            >
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg text-slate-800">{chap}</h3>
+                                    <span className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                        <IconArrowRight />
+                                    </span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div className="bg-green-500 h-full" style={{ width: `${
+                                        globalStats.topics[chap] && globalStats.topics[chap].total > 0 
+                                        ? (globalStats.topics[chap].correct / QUESTIONS.filter(q=>q.concept===chap).length) * 100 
+                                        : 0
+                                    }%` }}></div>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2 text-right">
+                                    {QUESTIONS.filter(q => q.concept === chap).length} Questions
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="mt-12 text-center text-slate-400 text-sm">
+                        <button onClick={() => { localStorage.removeItem(STORAGE_KEY); setHistory({}); }} className="underline hover:text-red-500">
+                            Reset All Data
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

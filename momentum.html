@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momentum Collision Lab</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { background-color: #f1f5f9; }
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px; width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin-top: -6px; 
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- ICONS (Embedded directly to prevent Error #130) ---
+        const IconPlay = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+        const IconPause = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
+        const IconReset = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const IconArrowLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
+        const IconSettings = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>;
+        const IconInfo = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>;
+
+        // --- PHYSICS CONSTANTS ---
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 300;
+        const GROUND_Y = 200;
+        const SCALE_PIXELS_PER_METER = 50; // 50px = 1m
+
+        // --- HELPER COMPONENTS ---
+
+        // A single slider control
+        const ControlSlider = ({ label, value, min, max, step, onChange, unit, color = "text-slate-700" }) => (
+            <div className="mb-3">
+                <div className="flex justify-between text-xs font-semibold mb-1">
+                    <span className={color}>{label}</span>
+                    <span className="text-slate-500">{value} {unit}</span>
+                </div>
+                <input 
+                    type="range" 
+                    min={min} max={max} step={step} 
+                    value={value} 
+                    onChange={(e) => onChange(parseFloat(e.target.value))}
+                    className="w-full"
+                />
+            </div>
+        );
+
+        // The Data Card showing P and KE
+        const StatCard = ({ title, obj1, obj2, total, unit, color }) => (
+            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{title}</h4>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="text-blue-600 font-mono">
+                        <div className="text-[10px] text-slate-400">BLUE</div>
+                        {obj1.toFixed(2)}
+                    </div>
+                    <div className="text-red-600 font-mono">
+                        <div className="text-[10px] text-slate-400">RED</div>
+                        {obj2.toFixed(2)}
+                    </div>
+                    <div className={`font-bold font-mono ${color}`}>
+                        <div className="text-[10px] text-slate-400">TOTAL</div>
+                        {total.toFixed(2)} {unit}
+                    </div>
+                </div>
+            </div>
+        );
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            // -- CONFIG STATE (User Inputs) --
+            const [m1, setM1] = useState(2.0);
+            const [u1, setU1] = useState(3.0);
+            const [m2, setM2] = useState(1.0);
+            const [u2, setU2] = useState(-2.0);
+            const [elasticity, setElasticity] = useState(1.0); // 1 = Elastic, 0 = Inelastic
+
+            // -- SIMULATION STATE (Real-time) --
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [time, setTime] = useState(0);
+            
+            // Positions (x) and Velocities (v)
+            const [state, setState] = useState({
+                x1: 100, v1: 3.0,
+                x2: 500, v2: -2.0
+            });
+
+            // Refs for animation loop to avoid stale closures
+            const requestRef = useRef();
+            const stateRef = useRef(state); 
+            const configRef = useRef({ m1, m2, elasticity });
+
+            // Sync refs when state changes (so the loop sees new values)
+            useEffect(() => {
+                configRef.current = { m1, m2, elasticity };
+            }, [m1, m2, elasticity]);
+
+            // Reset function
+            const handleReset = () => {
+                setIsPlaying(false);
+                setTime(0);
+                const newState = {
+                    x1: 100, v1: u1,
+                    x2: 500, v2: u2
+                };
+                setState(newState);
+                stateRef.current = newState;
+            };
+
+            // Apply initial velocities when user changes sliders (only if time is 0)
+            useEffect(() => {
+                if (time === 0) {
+                    const newState = {
+                        x1: 100, v1: u1,
+                        x2: 500, v2: u2
+                    };
+                    setState(newState);
+                    stateRef.current = newState;
+                }
+            }, [u1, u2, time]);
+
+
+            // --- PHYSICS ENGINE ---
+            const updatePhysics = useCallback(() => {
+                if (!isPlaying) return;
+
+                const dt = 1/60; // Fixed time step
+                const current = stateRef.current;
+                const cfg = configRef.current;
+
+                // 1. Update positions
+                let nextX1 = current.x1 + (current.v1 * SCALE_PIXELS_PER_METER * dt);
+                let nextX2 = current.x2 + (current.v2 * SCALE_PIXELS_PER_METER * dt);
+                let nextV1 = current.v1;
+                let nextV2 = current.v2;
+
+                // 2. Collision Detection
+                // Calculate radii based on mass (just for visuals, roughly area proportional to mass)
+                const r1 = 20 + (cfg.m1 * 5);
+                const r2 = 20 + (cfg.m2 * 5);
+                const dist = nextX2 - nextX1;
+                const minDist = r1 + r2;
+
+                if (dist <= minDist) {
+                    // COLLISION DETECTED!
+                    
+                    // Resolve overlap (prevent sticking)
+                    const overlap = minDist - dist;
+                    nextX1 -= overlap / 2;
+                    nextX2 += overlap / 2;
+
+                    // 1D Collision Formulas with Coefficient of Restitution (e)
+                    // v1_final = (m1*u1 + m2*u2 + m2*e*(u2-u1)) / (m1+m2)
+                    // v2_final = (m1*u1 + m2*u2 + m1*e*(u1-u2)) / (m1+m2)
+
+                    const u1 = current.v1;
+                    const u2 = current.v2;
+                    const totalM = cfg.m1 + cfg.m2;
+                    const e = cfg.elasticity;
+
+                    nextV1 = ((cfg.m1 * u1) + (cfg.m2 * u2) + (cfg.m2 * e * (u2 - u1))) / totalM;
+                    nextV2 = ((cfg.m1 * u1) + (cfg.m2 * u2) + (cfg.m1 * e * (u1 - u2))) / totalM;
+                }
+
+                // 3. Wall Bouncing (Optional, keeps them on screen)
+                if (nextX1 - r1 < 0) { nextX1 = r1; nextV1 *= -1; }
+                if (nextX2 + r2 > CANVAS_WIDTH) { nextX2 = CANVAS_WIDTH - r2; nextV2 *= -1; }
+
+                // 4. Update State
+                const newState = { x1: nextX1, v1: nextV1, x2: nextX2, v2: nextV2 };
+                stateRef.current = newState;
+                setState(newState);
+                setTime(prev => prev + dt);
+
+                requestRef.current = requestAnimationFrame(updatePhysics);
+            }, [isPlaying]);
+
+            // Handle Animation Loop
+            useEffect(() => {
+                if (isPlaying) {
+                    requestRef.current = requestAnimationFrame(updatePhysics);
+                } else {
+                    cancelAnimationFrame(requestRef.current);
+                }
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [isPlaying, updatePhysics]);
+
+
+            // --- CALCULATIONS FOR UI ---
+            const r1 = 20 + (m1 * 5);
+            const r2 = 20 + (m2 * 5);
+            
+            // Momentum (p = mv)
+            const p1 = m1 * state.v1;
+            const p2 = m2 * state.v2;
+            const pTotal = p1 + p2;
+
+            // Kinetic Energy (KE = 0.5mv^2)
+            const ke1 = 0.5 * m1 * state.v1 * state.v1;
+            const ke2 = 0.5 * m2 * state.v2 * state.v2;
+            const keTotal = ke1 + ke2;
+
+            return (
+                <div className="min-h-screen flex flex-col font-sans text-slate-800">
+                    
+                    {/* Header */}
+                    <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+                        <div className="flex items-center gap-4">
+                            <a href="index.html" className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+                                <IconArrowLeft />
+                            </a>
+                            <div>
+                                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                                    Collision Lab
+                                </h1>
+                                <p className="text-xs text-slate-500 hidden sm:block">Conservation of Momentum & Energy</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <button 
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white transition-all shadow-md ${isPlaying ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                            >
+                                {isPlaying ? <><IconPause /> Pause</> : <><IconPlay /> Start</>}
+                            </button>
+                            <button 
+                                onClick={handleReset}
+                                className="p-2 text-slate-500 hover:bg-slate-100 hover:text-blue-600 rounded-lg transition-colors"
+                                title="Reset Simulation"
+                            >
+                                <IconReset />
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* LEFT COLUMN: Visualization & Stats */}
+                        <div className="lg:col-span-2 space-y-6">
+                            
+                            {/* Simulation Canvas */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                                <div className="absolute top-4 right-4 bg-slate-900/5 px-3 py-1 rounded-full text-xs font-mono text-slate-500">
+                                    t = {time.toFixed(2)}s
+                                </div>
+                                
+                                <svg viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} className="w-full h-auto bg-slate-50">
+                                    {/* Grid Lines */}
+                                    <defs>
+                                        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                                            <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#e2e8f0" strokeWidth="1"/>
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100%" height="100%" fill="url(#grid)" />
+
+                                    {/* Floor */}
+                                    <line x1="0" y1={GROUND_Y + r1} x2={CANVAS_WIDTH} y2={GROUND_Y + r1} stroke="#94a3b8" strokeWidth="2" />
+                                    
+                                    {/* Object 1 (Blue) */}
+                                    <g transform={`translate(${state.x1}, ${GROUND_Y})`}>
+                                        <circle r={r1} fill="#3b82f6" fillOpacity="0.9" stroke="#2563eb" strokeWidth="2" />
+                                        <text y="5" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">m₁</text>
+                                        {/* Velocity Arrow */}
+                                        {Math.abs(state.v1) > 0.1 && (
+                                            <g transform={`translate(0, -${r1 + 15})`}>
+                                                <line x1="0" y1="0" x2={state.v1 * 20} y2="0" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#arrowhead-blue)" />
+                                                <text x={state.v1 * 10} y="-8" textAnchor="middle" fill="#3b82f6" fontSize="12">{state.v1.toFixed(1)} m/s</text>
+                                            </g>
+                                        )}
+                                    </g>
+
+                                    {/* Object 2 (Red) */}
+                                    <g transform={`translate(${state.x2}, ${GROUND_Y + (r1-r2)})`}>
+                                        <circle r={r2} fill="#ef4444" fillOpacity="0.9" stroke="#dc2626" strokeWidth="2" />
+                                        <text y="5" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">m₂</text>
+                                        {/* Velocity Arrow */}
+                                        {Math.abs(state.v2) > 0.1 && (
+                                            <g transform={`translate(0, -${r2 + 15})`}>
+                                                <line x1="0" y1="0" x2={state.v2 * 20} y2="0" stroke="#ef4444" strokeWidth="3" markerEnd="url(#arrowhead-red)" />
+                                                <text x={state.v2 * 10} y="-8" textAnchor="middle" fill="#ef4444" fontSize="12">{state.v2.toFixed(1)} m/s</text>
+                                            </g>
+                                        )}
+                                    </g>
+
+                                    {/* Arrow Markers */}
+                                    <defs>
+                                        <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6" />
+                                        </marker>
+                                        <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                                        </marker>
+                                    </defs>
+                                </svg>
+                            </div>
+
+                            {/* Real-time Data */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <StatCard 
+                                    title="Momentum (kg·m/s)" 
+                                    obj1={p1} 
+                                    obj2={p2} 
+                                    total={pTotal} 
+                                    unit="Ns"
+                                    color="text-emerald-600"
+                                />
+                                <StatCard 
+                                    title="Kinetic Energy (J)" 
+                                    obj1={ke1} 
+                                    obj2={ke2} 
+                                    total={keTotal} 
+                                    unit="J"
+                                    color={Math.abs(elasticity - 1) < 0.01 ? "text-emerald-600" : "text-amber-600"}
+                                />
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Controls */}
+                        <div className="space-y-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex items-center gap-2 mb-6 text-slate-800">
+                                    <IconSettings />
+                                    <h2 className="font-bold text-lg">Configuration</h2>
+                                </div>
+
+                                {/* Object 1 Controls */}
+                                <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                    <h3 className="text-blue-800 font-bold text-sm mb-4 flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div> Object 1 (Blue)
+                                    </h3>
+                                    <ControlSlider label="Mass" value={m1} min={0.5} max={10} step={0.5} unit="kg" onChange={setM1} color="text-blue-700" />
+                                    <ControlSlider label="Initial Velocity" value={u1} min={-10} max={10} step={0.5} unit="m/s" onChange={setU1} color="text-blue-700" />
+                                </div>
+
+                                {/* Object 2 Controls */}
+                                <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100">
+                                    <h3 className="text-red-800 font-bold text-sm mb-4 flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-red-500"></div> Object 2 (Red)
+                                    </h3>
+                                    <ControlSlider label="Mass" value={m2} min={0.5} max={10} step={0.5} unit="kg" onChange={setM2} color="text-red-700" />
+                                    <ControlSlider label="Initial Velocity" value={u2} min={-10} max={10} step={0.5} unit="m/s" onChange={setU2} color="text-red-700" />
+                                </div>
+
+                                {/* Environment Controls */}
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                    <h3 className="text-slate-800 font-bold text-sm mb-4">Collision Type</h3>
+                                    <ControlSlider label="Elasticity (e)" value={elasticity} min={0} max={1} step={0.1} unit="" onChange={setElasticity} />
+                                    <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase mt-1">
+                                        <span>Perfectly Inelastic</span>
+                                        <span>Perfectly Elastic</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
+                                <div className="flex gap-2 mb-2 font-bold">
+                                    <IconInfo /> Did you know?
+                                </div>
+                                <p className="leading-relaxed opacity-90">
+                                    In a perfectly elastic collision (e=1), both Momentum and Kinetic Energy are conserved. If e &lt; 1, some Kinetic Energy is lost to heat or sound, but Momentum is <em>always</em> conserved.
+                                </p>
+                            </div>
+                        </div>
+
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pendulum Energy Simulation</title>
+    
+    <!-- Load React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Load Babel to compile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS (CDN for quick styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Custom overrides if needed */
+        body {
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        /* Smooth bar transitions */
+        .energy-bar {
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // Simple Icon Components (replacing lucide-react for standalone usage)
+        const IconPlay = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        );
+        const IconPause = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        );
+        const IconReset = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        );
+
+        const PendulumSimulation = () => {
+            // --- State ---
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [slowMo, setSlowMo] = useState(false);
+            
+            // Physics Parameters
+            const GRAVITY = 9.81;
+            const LENGTH = 3; // meters
+            const MASS = 1;   // kg
+            
+            // Simulation State
+            const [angle, setAngle] = useState(Math.PI / 4); 
+            const [omega, setOmega] = useState(0);
+            const [sliderValue, setSliderValue] = useState(45);
+
+            const referenceEnergy = useRef(null);
+            const requestRef = useRef();
+            const previousTimeRef = useRef();
+            const stateRef = useRef({ angle: Math.PI / 4, omega: 0 });
+
+            // --- Physics Engine ---
+            const updatePhysics = useCallback((deltaTime) => {
+                let { angle: currentAngle, omega: currentOmega } = stateRef.current;
+                
+                // Angular acceleration
+                const alpha = -(GRAVITY / LENGTH) * Math.sin(currentAngle);
+                
+                let nextOmega = currentOmega + alpha * deltaTime;
+                let nextAngle = currentAngle + nextOmega * deltaTime;
+
+                // Energy Correction
+                const getHeight = (theta) => LENGTH * (1 - Math.cos(theta));
+                const h_current = getHeight(nextAngle);
+                const pe_current = MASS * GRAVITY * h_current;
+
+                if (referenceEnergy.current === null) {
+                    const v_initial = nextOmega * LENGTH;
+                    const ke_initial = 0.5 * MASS * v_initial * v_initial;
+                    referenceEnergy.current = pe_current + ke_initial;
+                }
+
+                const targetTotal = referenceEnergy.current;
+                let requiredKE = targetTotal - pe_current;
+
+                if (requiredKE < 0) {
+                    requiredKE = 0;
+                    nextOmega = 0;
+                } else {
+                    const requiredVel = Math.sqrt((2 * requiredKE) / MASS);
+                    const requiredOmegaMag = requiredVel / LENGTH;
+                    
+                    if (Math.abs(nextOmega) < 0.0001) {
+                        // turning point
+                    } else {
+                        nextOmega = Math.sign(nextOmega) * requiredOmegaMag;
+                    }
+                }
+
+                stateRef.current = { angle: nextAngle, omega: nextOmega };
+                setAngle(nextAngle);
+                setOmega(nextOmega);
+                setSliderValue(nextAngle * (180 / Math.PI));
+
+            }, []);
+
+            // --- Animation Loop ---
+            const animate = (time) => {
+                if (previousTimeRef.current !== undefined) {
+                    const deltaTime = (time - previousTimeRef.current) / 1000;
+                    const timeScale = slowMo ? 0.2 : 1.0;
+                    const steps = 4;
+                    const stepTime = (deltaTime * timeScale) / steps;
+                    
+                    for (let i = 0; i < steps; i++) {
+                        updatePhysics(stepTime);
+                    }
+                }
+                previousTimeRef.current = time;
+                requestRef.current = requestAnimationFrame(animate);
+            };
+
+            useEffect(() => {
+                if (isPlaying) {
+                    requestRef.current = requestAnimationFrame(animate);
+                } else {
+                    cancelAnimationFrame(requestRef.current);
+                    previousTimeRef.current = undefined;
+                }
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [isPlaying, slowMo, updatePhysics]);
+
+            // --- Controls ---
+            const handleSliderChange = (e) => {
+                setIsPlaying(false);
+                const deg = parseFloat(e.target.value);
+                setSliderValue(deg);
+                const rad = deg * (Math.PI / 180);
+                setAngle(rad);
+                setOmega(0);
+                stateRef.current = { angle: rad, omega: 0 };
+                const h = LENGTH * (1 - Math.cos(rad));
+                referenceEnergy.current = MASS * GRAVITY * h;
+            };
+
+            const handleReset = () => {
+                setIsPlaying(false);
+                setSliderValue(45);
+                const rad = 45 * (Math.PI / 180);
+                setAngle(rad);
+                setOmega(0);
+                stateRef.current = { angle: rad, omega: 0 };
+                const h = LENGTH * (1 - Math.cos(rad));
+                referenceEnergy.current = MASS * GRAVITY * h;
+            };
+
+            // --- Visualization Data ---
+            const currentHeight = LENGTH * (1 - Math.cos(angle));
+            const currentPE = MASS * GRAVITY * currentHeight;
+            
+            let currentTotal = referenceEnergy.current;
+            if (!isPlaying || currentTotal === null) {
+                currentTotal = currentPE;
+                referenceEnergy.current = currentPE; 
+            }
+            
+            let currentKE = currentTotal - currentPE;
+            if (currentKE < 0.01) currentKE = 0; 
+
+            // Scaling Logic: Max Energy = m * g * LENGTH (at 90 degrees)
+            const MAX_POSSIBLE_ENERGY = MASS * GRAVITY * LENGTH; 
+            const getBarWidth = (energy) => {
+                const percent = (energy / MAX_POSSIBLE_ENERGY) * 100;
+                return Math.min(100, Math.max(0, percent));
+            };
+
+            const bobX = Math.sin(angle) * 250; 
+            const bobY = Math.cos(angle) * 250;
+
+            return (
+                <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 md:p-6 bg-white rounded-xl shadow-lg border border-slate-200 mt-10">
+                
+                <div className="mb-4 text-center">
+                    <h2 className="text-2xl font-bold text-slate-800">Conservation of Energy</h2>
+                    <p className="text-slate-600 text-sm md:text-base">Use the slider to set the starting height.</p>
+                </div>
+
+                <div className="flex flex-col md:flex-row w-full gap-6">
+                    
+                    {/* Simulation Area */}
+                    <div className="relative flex-1 bg-white rounded-lg shadow-inner border border-slate-200 h-80 overflow-hidden">
+                    <svg viewBox="-300 -50 600 400" className="w-full h-full">
+                        <line x1="-100" y1="0" x2="100" y2="0" stroke="#334155" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="0" y1="0" x2={bobX} y2={bobY} stroke="#94a3b8" strokeWidth="3" />
+                        <circle cx={bobX} cy={bobY} r="25" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
+                    </svg>
+                    
+                    {!isPlaying && (
+                        <div className="absolute top-4 right-4 bg-slate-100 px-3 py-1 rounded-full text-xs font-mono text-slate-500 border border-slate-200">
+                        {Math.round(sliderValue)}°
+                        </div>
+                    )}
+                    </div>
+
+                    {/* Graphs Area */}
+                    <div className="w-full md:w-64 flex flex-col justify-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-slate-200">
+                    {/* Total Energy */}
+                    <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <span>Total</span>
+                        <span>{currentTotal?.toFixed(1)} J</span>
+                        </div>
+                        <div className="w-full h-8 bg-slate-100 rounded-md overflow-hidden border border-slate-200 relative">
+                        <div className="absolute top-0 bottom-0 border-r-2 border-dashed border-slate-300 z-10" style={{ left: `${getBarWidth(currentTotal)}%` }}></div>
+                        <div 
+                            className="energy-bar h-full bg-green-500"
+                            style={{ width: `${getBarWidth(currentTotal)}%` }}
+                        />
+                        </div>
+                    </div>
+
+                    {/* Kinetic Energy */}
+                    <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <span>Kinetic</span>
+                        <span>{currentKE.toFixed(1)} J</span>
+                        </div>
+                        <div className="w-full h-8 bg-slate-100 rounded-md overflow-hidden border border-slate-200">
+                        <div 
+                            className="energy-bar h-full bg-red-500"
+                            style={{ width: `${getBarWidth(currentKE)}%` }}
+                        />
+                        </div>
+                    </div>
+
+                    {/* Potential Energy */}
+                    <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <span>Potential</span>
+                        <span>{currentPE.toFixed(1)} J</span>
+                        </div>
+                        <div className="w-full h-8 bg-slate-100 rounded-md overflow-hidden border border-slate-200">
+                        <div 
+                            className="energy-bar h-full bg-blue-500"
+                            style={{ width: `${getBarWidth(currentPE)}%` }}
+                        />
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                {/* Control Panel */}
+                <div className="w-full mt-6 p-4 bg-white rounded-lg border border-slate-200 flex flex-col gap-4">
+                    
+                    {/* Slider */}
+                    <div className="flex flex-col gap-2">
+                    <label htmlFor="angle-slider" className="text-sm font-semibold text-slate-700">Set Initial Angle</label>
+                    <input
+                        id="angle-slider"
+                        type="range"
+                        min="-90"
+                        max="90"
+                        step="1"
+                        value={sliderValue}
+                        onChange={handleSliderChange}
+                        disabled={isPlaying}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <div className="flex justify-between text-xs text-slate-400 font-mono">
+                        <span>-90°</span>
+                        <span>0°</span>
+                        <span>+90°</span>
+                    </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white font-bold shadow-sm transition-all active:scale-95 ${isPlaying ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'}`}
+                            >
+                                {isPlaying ? <><IconPause /> Pause</> : <><IconPlay /> Play</>}
+                            </button>
+
+                            <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 px-4 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors font-semibold active:scale-95"
+                            >
+                                <IconReset /> Reset
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                            <input 
+                                type="checkbox" 
+                                id="slowmo" 
+                                checked={slowMo} 
+                                onChange={(e) => setSlowMo(e.target.checked)}
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="slowmo" className="text-sm text-slate-700 font-medium cursor-pointer select-none">Slow Motion</label>
+                        </div>
+                    </div>
+                </div>
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PendulumSimulation />);
+    </script>
+</body>
+</html>
